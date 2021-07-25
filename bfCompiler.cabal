@@ -1,0 +1,20 @@
+name:                bfCompiler
+version:             0.1.0.0
+-- synopsis:
+-- description:
+homepage:            https://github.com/9nine9nine9/bfCompiler#readme
+license:             BSD3
+license-file:        LICENSE
+author:              Jacob Walters
+maintainer:          J.Walters-6@sms.ed.ac.uk
+copyright:           Public Domain
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+extra-source-files:  README.md
+
+executable bfCompiler
+  hs-source-dirs:      src
+  main-is:             Main.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
