@@ -1,7 +1,7 @@
-# Editor remnants
-**/*~
-**/*.kate-swp
-
 # Stack build dirs
 .stack-work/
 stack.yaml.lock
+
+# Editor remnants
+*~
+*.kate-swp
