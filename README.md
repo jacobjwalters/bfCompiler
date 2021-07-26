@@ -28,4 +28,4 @@ there's really not too much complexity to it.
 You'd be much better off spending the time you'd take understanding my code
 on actually implementing your own version.
 
-That being said, it's under GPLv3, so do what you will with the code itself.
+That being said, it's under MIT licensing, so do what you will with the code itself.
