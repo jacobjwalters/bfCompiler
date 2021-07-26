@@ -1,7 +1,8 @@
 module Compiler where
 
-import Control.Applicative ((<|>), some)
+import Control.Applicative  ((<|>), some)
 import Data.Char
+import Data.Maybe           ( fromJust )
 
 import Types
 import Parser
@@ -72,5 +73,11 @@ runBF mem (i:is) = do
 
 
 
+emptyMem :: Mem
+emptyMem = fromJust $ listToTape $ replicate 256 0
+
 helloworld :: String
 helloworld = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.<<"
+
+hw :: Prog
+hw = fromJust $ parse helloworld
