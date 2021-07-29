@@ -1,24 +1,55 @@
-name:                bfCompiler
-version:             0.1.0.0
--- synopsis:
--- description:
-homepage:            https://github.com/9nine9nine9/bfCompiler#readme
-license:             BSD3
-license-file:        LICENSE
-author:              Jacob Walters
-maintainer:          J.Walters-6@sms.ed.ac.uk
-copyright:           Public Domain
-category:            Web
-build-type:          Simple
-cabal-version:       >=1.10
-extra-source-files:  README.md
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.34.4.
+--
+-- see: https://github.com/sol/hpack
+
+name:           bfCompiler
+version:        0.1.0.0
+description:    An optimising, amd64 assembly generating brainfuck compiler
+homepage:       https://github.com/9nine9nine9/bfCompiler#readme
+bug-reports:    https://github.com/9nine9nine9/bfCompiler/issues
+author:         Jacob Walters
+maintainer:     Jacob Walters
+copyright:      2021 Jacob Walters
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/9nine9nine9/bfCompiler
+
+library
+  exposed-modules:
+      BFOptimiser
+      BFtoIR
+      Compiler
+      Main
+      Parser
+      Types
+  other-modules:
+      Paths_bfCompiler
+  hs-source-dirs:
+      src
+  build-depends:
+      base
+  default-language: Haskell2010
 
 executable bfCompiler
-  hs-source-dirs:      src
-  other-modules:       Compiler,
-                       Optimiser,
-                       Parser,
-                       Types
-  main-is:             Main.hs
-  default-language:    Haskell2010
-  build-depends:       base >= 4.7 && < 5
+  main-is: Main.hs
+  other-modules:
+      BFOptimiser
+      BFtoIR
+      Compiler
+      Parser
+      Types
+      Paths_bfCompiler
+  hs-source-dirs:
+      src
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      base
+  default-language: Haskell2010

@@ -1,16 +1,15 @@
-module Optimiser
-    ( cancelDups
-    , reorderShifts
-    , rmDeadLoops
+module BFOptimiser
+    ( rmDeadLoops
     , rmDeadShifts
-    , optimise
+    , cancelDups
+    , optimiseBF
     ) where
 
 import Data.List
 
 import Types
 
-type Pass = Prog -> Prog
+type Pass = BFProg -> BFProg
 
 -- | Removes loops at the start of the program, as all cells are zero (so they'd
 -- be skipped regardless).
@@ -31,7 +30,7 @@ rmDeadLoops = rmDeadLoopsBody . rmDeadLoopsStart
 
 -- | Shifts at the end of a program have no effect.
 rmDeadShifts :: Pass
-rmDeadShifts = reverse . dropWhile (isShift) . reverse
+rmDeadShifts = reverse . dropWhile isShift . reverse
     where isShift ShiftL = True
           isShift ShiftR = True
           isShift _      = False
@@ -50,20 +49,5 @@ cancelDups (i:is) = let is'   = cancelDups is
                         then i:is
                         else cancelDups (i:is')
 
--- | Reorders e.g. `+>+<+` to `++>+<`
--- Useful for later compilation phases
-reorderShifts :: Pass
-reorderShifts [] = []
-reorderShifts is = reorder is' ++ reorderShifts is''
-    where rearrangeable Inc    = True
-          rearrangeable Dec    = True
-          rearrangeable ShiftL = True
-          rearrangeable ShiftR = True
-          rearrangeable _      = False
-          is'  = takeWhile (rearrangeable) is
-          is'' = dropWhile (rearrangeable) is
-          reorder :: Pass
-          reorder = id
-
-optimise :: Pass
-optimise = cancelDups . reorderShifts . rmDeadLoops
+optimiseBF :: Pass
+optimiseBF = cancelDups . rmDeadLoops . rmDeadShifts

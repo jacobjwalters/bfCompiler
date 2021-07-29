@@ -6,7 +6,8 @@ import Data.Maybe           ( fromJust )
 
 import Types
 import Parser
-import Optimiser
+import BFOptimiser
+import BFtoIR
 
 -- | Default tape instance for a given list
 listToTape :: [a] -> Maybe (Tape a)
@@ -29,19 +30,19 @@ parseInstr = foldl1 (<|>)
          some parseInstr
          <* char ']')]
 
-parseProg :: Parser Prog
+parseProg :: Parser BFProg
 parseProg = some parseInstr <* eof
 
-parse :: String -> Maybe Prog
+parse :: String -> Maybe BFProg
 parse str = snd <$> runParser parseProg str
 
 
 -- INTERPRETER STUFF
 shiftL, shiftR :: Tape a -> Tape a
-shiftL t@(Tape [] b cs)   = t
-shiftL (Tape (a:as) b cs) = Tape as a (b:cs)
-shiftR t@(Tape as b [])   = t
-shiftR (Tape as b (c:cs)) = Tape (b:as) c cs
+shiftL t@(Tape []     b cs)     = t
+shiftL   (Tape (a:as) b cs)     = Tape as a (b:cs)
+shiftR t@(Tape as     b [])     = t
+shiftR   (Tape as     b (c:cs)) = Tape (b:as) c cs
 
 alterCell :: (a -> a) -> Tape a -> Tape a
 alterCell f (Tape as b cs) = Tape as (f b) cs
@@ -53,7 +54,7 @@ setCell :: a -> Tape a -> Tape a
 setCell = alterCell . const
 
 -- | Interprets a program in a given memory state
-runBF :: Mem -> Prog -> IO Mem
+runBF :: Mem -> BFProg -> IO Mem
 runBF mem [] = return mem
 runBF mem (i:is) = do
     case i of
@@ -61,12 +62,12 @@ runBF mem (i:is) = do
          ShiftR  -> runBF (shiftR            mem) is
          Inc     -> runBF (alterCell (+1)    mem) is
          Dec     -> runBF (alterCell (+(-1)) mem) is
-         Print   -> do
-             putChar $ chr $ getCell mem
-             runBF mem is
          Read    -> do
              c <- getChar
              runBF (setCell (ord c) mem) is
+         Print   -> do
+             putChar $ chr $ getCell mem
+             runBF mem is
          Loop is' -> case getCell mem of
                          0 -> runBF mem is
                          _ -> runBF mem is' >>= flip runBF (i:is)
@@ -79,5 +80,8 @@ emptyMem = fromJust $ listToTape $ replicate 256 0
 helloworld :: String
 helloworld = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.<<"
 
-hw :: Prog
+hw :: BFProg
 hw = fromJust $ parse helloworld
+
+parseIR :: String -> IRProg
+parseIR = generateIR . fromJust . parse
