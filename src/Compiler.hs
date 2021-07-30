@@ -1,13 +1,12 @@
 module Compiler where
 
-import Control.Applicative  ((<|>), some)
+import Control.Applicative  ((<|>), many)
 import Data.Char
 import Data.Maybe           ( fromJust )
 
 import Types
 import Parser
-import BFOptimiser
-import BFtoIR
+import Optimiser
 
 -- | Default tape instance for a given list
 listToTape :: [a] -> Maybe (Tape a)
@@ -17,61 +16,74 @@ listToTape (x:xs) = Just $ Tape [] x xs
 stripComments :: String -> String
 stripComments = filter (`elem` "[]<>+-,.")
 
-parseInstr :: Parser Instr
+parseInstr :: Parser IR
 parseInstr = foldl1 (<|>)
-    [ ShiftL <$ char '<'
-    , ShiftR <$ char '>'
-    , Inc    <$ char '+'
-    , Dec    <$ char '-'
-    , Read   <$ char ','
-    , Print  <$ char '.'
+    [ Shift (-1) <$ char '<'
+    , Shift 1 <$ char '>'
+    , Add 1 0    <$ char '+'
+    , Add (-1) 0    <$ char '-'
+    , Read 0   <$ char ','
+    , Print 0  <$ char '.'
     , Loop   <$>
         (char '[' *>
-         some parseInstr
+         many parseInstr
          <* char ']')]
 
-parseProg :: Parser BFProg
-parseProg = some parseInstr <* eof
+parseProg :: Parser Prog
+parseProg = many parseInstr <* eof
 
-parse :: String -> Maybe BFProg
+parse :: String -> Maybe Prog
 parse str = snd <$> runParser parseProg str
 
 
 -- INTERPRETER STUFF
-shiftL, shiftR :: Tape a -> Tape a
-shiftL t@(Tape []     b cs)     = t
-shiftL   (Tape (a:as) b cs)     = Tape as a (b:cs)
-shiftR t@(Tape as     b [])     = t
-shiftR   (Tape as     b (c:cs)) = Tape (b:as) c cs
+shiftTape :: Offset -> Tape a -> Tape a
+shiftTape o (Tape as b cs)
+    | o <  0 = flipTape $ shift (-o) cs b as
+    | o == 0 = Tape as b cs
+    | o >  0 = shift o as b cs
+    where shift o as b cs = Tape (tail (reverse $ take o cs) ++ [b] ++ as)
+                                 (last $ take o cs)
+                                 (drop o cs)
+shiftTape o t = error $ "Invalid shiftTape input: " ++ show o
 
-alterCell :: (a -> a) -> Tape a -> Tape a
-alterCell f (Tape as b cs) = Tape as (f b) cs
+alterCell :: (a -> a) -> Offset -> Tape a -> Tape a
+alterCell f o (Tape as b cs)
+    | o <  0 = Tape (adjust f (abs o) as) b cs
+    | o == 0 = Tape as (f b) cs
+    | o >  0 = Tape as b (adjust f o cs)
+    where adjust :: (a -> a) -> Offset -> [a] -> [a]
+          adjust f o = uncurry (++) . second (\(x:xs) -> f x : xs) . splitAt o
+          second f (a,b) = (a,f b)
+alterCell _ o t = error $ "Invalid alterCell input" ++ show o
 
-getCell :: Tape a -> a
-getCell (Tape _ a _) = a
+getCell :: Offset -> Tape a -> a
+getCell = (getCell' .) . shiftTape
+    where getCell' (Tape _ a _) = a
 
-setCell :: a -> Tape a -> Tape a
+setCell :: a -> Offset -> Tape a -> Tape a
 setCell = alterCell . const
 
 -- | Interprets a program in a given memory state
-runBF :: Mem -> BFProg -> IO Mem
-runBF mem [] = return mem
-runBF mem (i:is) = do
+runIR :: Mem -> Prog -> IO Mem
+runIR mem [] = return mem
+runIR mem (i:is) = do
     case i of
-         ShiftL  -> runBF (shiftL            mem) is
-         ShiftR  -> runBF (shiftR            mem) is
-         Inc     -> runBF (alterCell (+1)    mem) is
-         Dec     -> runBF (alterCell (+(-1)) mem) is
-         Read    -> do
+         Shift  o -> runIR (shiftTape      o mem) is
+         Set  x o -> runIR (setCell     x  o mem) is
+         Add  x o -> runIR (alterCell (+x) o mem) is
+         Mult x o -> runIR (alterCell (*x) o mem) is
+         Copy o   -> let cp = setCell (getCell 0 mem)
+                     in runIR (cp o (cp (o+1) mem)) is
+         Read   o -> do
              c <- getChar
-             runBF (setCell (ord c) mem) is
-         Print   -> do
-             putChar $ chr $ getCell mem
-             runBF mem is
-         Loop is' -> case getCell mem of
-                         0 -> runBF mem is
-                         _ -> runBF mem is' >>= flip runBF (i:is)
-
+             runIR (setCell (ord c) o mem) is
+         Print  o -> do
+             putChar $ chr $ getCell o mem
+             runIR mem is
+         Loop is' -> case getCell 0 mem of
+                         0 -> runIR mem is
+                         _ -> runIR mem is' >>= flip runIR (i:is)
 
 
 emptyMem :: Mem
@@ -80,8 +92,8 @@ emptyMem = fromJust $ listToTape $ replicate 256 0
 helloworld :: String
 helloworld = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.<<"
 
-hw :: BFProg
+hw :: Prog
 hw = fromJust $ parse helloworld
 
-parseIR :: String -> IRProg
-parseIR = generateIR . fromJust . parse
+parseIR :: String -> Prog
+parseIR = fromJust . parse

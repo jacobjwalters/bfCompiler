@@ -24,10 +24,9 @@ source-repository head
 
 library
   exposed-modules:
-      BFOptimiser
-      BFtoIR
       Compiler
       Main
+      Optimiser
       Parser
       Types
   other-modules:
@@ -41,9 +40,8 @@ library
 executable bfCompiler
   main-is: Main.hs
   other-modules:
-      BFOptimiser
-      BFtoIR
       Compiler
+      Optimiser
       Parser
       Types
       Paths_bfCompiler
